@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TicketFactura — factura tu ticket con un QR</title>
+  <meta name="description" content="Tus clientes piden factura escaneando el QR del ticket. Sin apps, sin colas, sin trabajo para ti. Para copisterías, ferreterías y cualquier comercio.">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: system-ui, sans-serif; color: #0f172a; line-height: 1.6; }
+    .hero { background: linear-gradient(160deg, #0e7490, #164e63); color: #fff; padding: 72px 20px 84px; text-align: center; }
+    .hero h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.15; max-width: 720px; margin: 0 auto 16px; }
+    .hero p { font-size: 19px; opacity: .92; max-width: 560px; margin: 0 auto 30px; }
+    .cta { display: inline-block; background: #fbbf24; color: #1a1a1a; font-weight: 700; padding: 14px 30px; border-radius: 10px; text-decoration: none; font-size: 17px; }
+    section { max-width: 960px; margin: 0 auto; padding: 56px 20px; }
+    h2 { font-size: 28px; margin-bottom: 24px; text-align: center; }
+    .pasos { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+    .paso { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px; }
+    .paso strong { display: block; font-size: 17px; margin-bottom: 6px; }
+    .paso .n { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #0e7490; color: #fff; font-weight: 700; margin-bottom: 10px; }
+    .franja { background: #ecfeff; }
+    .franja ul { max-width: 640px; margin: 0 auto; padding-left: 22px; }
+    .franja li { margin: 10px 0; }
+    .precio { text-align: center; }
+    .precio .tarifa { font-size: 44px; font-weight: 800; color: #0e7490; }
+    footer { text-align: center; padding: 26px; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Tus clientes piden factura<br>escaneando el QR del ticket</h1>
+    <p>Sin apps que instalar, sin hacer cola, sin robarte tiempo: el cliente pone su NIF una vez y la factura le llega sola al email.</p>
+    <a class="cta" href="mailto:robertoalmela300@gmail.com?subject=Quiero TicketFactura en mi comercio">Quiero probarlo en mi comercio</a>
+  </div>
+
+  <section>
+    <h2>Cómo funciona</h2>
+    <div class="pasos">
+      <div class="paso"><span class="n">1</span><strong>El ticket sale con un QR</strong>Tu caja o impresora añade un QR único a cada ticket. Sin cambiar de programa.</div>
+      <div class="paso"><span class="n">2</span><strong>El cliente escanea</strong>Pone su NIF y su email una sola vez — el móvil se los recuerda para la próxima.</div>
+      <div class="paso"><span class="n">3</span><strong>Factura en su email</strong>Numeración legal consecutiva con tu serie, copia para ti, y el cliente contento.</div>
+    </div>
+  </section>
+
+  <section class="franja">
+    <h2>Para quién es</h2>
+    <ul>
+      <li><strong>Copisterías y papelerías</strong> — autónomos pidiendo factura de 3€ todo el día.</li>
+      <li><strong>Ferreterías y suministros</strong> — profesionales que facturan cada compra.</li>
+      <li><strong>Gasolineras, parkings, hostelería de polígono</strong> — donde la cola por una factura cuesta clientes.</li>
+    </ul>
+  </section>
+
+  <section class="precio">
+    <h2>Precio de lanzamiento</h2>
+    <div class="tarifa">19 €/mes</div>
+    <p>por comercio · facturas ilimitadas · sin permanencia<br>Instalación y prueba de 30 días incluidas.</p>
+  </section>
+
+  <footer>TicketFactura · un producto de Roberto Almela (Elche) · robertoalmela300@gmail.com</footer>
+</body>
+</html>
