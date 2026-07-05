@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS comercios (
   serie TEXT NOT NULL,            -- prefijo de facturación, ej. "TF-COPI"
   iva_defecto REAL NOT NULL DEFAULT 21,
   api_key TEXT NOT NULL UNIQUE,   -- para que su TPV/PrintQueue genere QRs
+  -- Continuidad de serie: si el comercio se une a mitad de año con
+  -- facturas ya emitidas, seguimos su numeración (p. ej. última = 57
+  -- → la nuestra primera será la 58). Solo aplica a ese año.
+  secuencia_previa INTEGER NOT NULL DEFAULT 0,
+  anio_previo INTEGER,
   activo INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now'))
 );
@@ -41,17 +46,30 @@ CREATE TABLE IF NOT EXISTS facturas (
 );
 `);
 
+// Migración: columnas de continuidad de serie en BDs anteriores
+const cols = db.prepare("PRAGMA table_info(comercios)").all().map((c) => c.name);
+if (!cols.includes('secuencia_previa')) {
+  db.exec('ALTER TABLE comercios ADD COLUMN secuencia_previa INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE comercios ADD COLUMN anio_previo INTEGER');
+}
+
+
 /**
  * Numeración legal: consecutiva y sin huecos por comercio y año.
  * Transacción con SELECT MAX + INSERT — el UNIQUE remata la garantía.
  */
 const emitirFactura = db.transaction((datos) => {
   const anio = new Date().getFullYear();
+  const comercio = db
+    .prepare('SELECT serie, secuencia_previa, anio_previo FROM comercios WHERE id = ?')
+    .get(datos.comercio_id);
   const row = db
-    .prepare('SELECT COALESCE(MAX(secuencia), 0) + 1 AS next FROM facturas WHERE comercio_id = ? AND anio = ?')
+    .prepare('SELECT COALESCE(MAX(secuencia), 0) AS max FROM facturas WHERE comercio_id = ? AND anio = ?')
     .get(datos.comercio_id, anio);
-  const secuencia = row.next;
-  const comercio = db.prepare('SELECT serie FROM comercios WHERE id = ?').get(datos.comercio_id);
+  // Arranque de serie: en el año de alta se respeta la numeración que el
+  // comercio ya llevaba fuera del sistema; los años siguientes empiezan en 1.
+  const base = comercio.anio_previo === anio ? Math.max(row.max, comercio.secuencia_previa) : row.max;
+  const secuencia = base + 1;
   const numero = `${comercio.serie}-${anio}-${String(secuencia).padStart(4, '0')}`;
 
   const info = db.prepare(`
