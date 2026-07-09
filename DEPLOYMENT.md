@@ -6,7 +6,7 @@
 - IP pública: `173.249.46.245`
 - Ruta app: `/srv/apps/ticketfactura`
 - Puerto interno: `127.0.0.1:8380`
-- Proceso: PM2 `ticketfactura`
+- Proceso: Docker Compose `ticketfactura-app-1`
 - Datos persistentes: `/srv/apps/ticketfactura/data/ticketfactura.db`
 - Proxy público: Caddy (`/etc/caddy/Caddyfile`)
 
@@ -55,9 +55,7 @@ SMTP_FROM="TicketFactura <facturas@ticket-factura.es>"
 ```bash
 ssh roberto-contabo
 cd /srv/apps/ticketfactura
-npm ci
-pm2 restart ticketfactura --update-env || pm2 start npm --name ticketfactura -- start
-pm2 save
+docker compose up -d --build
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
@@ -67,8 +65,8 @@ sudo systemctl reload caddy
 ```bash
 curl -fsS http://127.0.0.1:8380/health
 curl -I http://173.249.46.245/
-pm2 status
-pm2 logs ticketfactura --lines 80
+docker compose ps
+docker compose logs --tail=80 app
 ```
 
 Flujo e2e mínimo:

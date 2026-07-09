@@ -11,10 +11,17 @@ npm run seed     # crea comercio demo y muestra su API key
 npm start        # http://localhost:8380 (landing en /)
 ```
 
-## Flujo (verificado e2e)
+## Flujos (verificados e2e)
+
+### QR / TPV — MVP principal
 1. TPV/PrintQueue: `POST /api/tickets` con `x-api-key` y `ticket_ref` único → `{url}` (y `GET /api/qr?url=...` da el PNG para el ticket)
 2. Cliente: abre `/f/<token>` → NIF+nombre+email (se recuerdan en su móvil) → `POST`
 3. Emisión: numeración `SERIE-AÑO-NNNN` sin huecos (transacción+UNIQUE), email al cliente con copia al comercio, idempotente por ticket+NIF
+
+### Flujo recuperado del proyecto anterior
+- `/solicitar`: subir foto del ticket, OCR opcional, buscador de empresa, datos fiscales del cliente y generación de factura.
+- `/panel`: panel simple del comercio con métricas, facturas recientes y generación de ticket QR de prueba mediante API key.
+- Endpoints compatibles: `/api/companies/search`, `/api/invoices/ocr`, `/api/invoices/request`, `/api/dashboard`, `/api/invoices/approved`.
 
 ## Configurar producción (.env)
 Ver `.env.example`. En `NODE_ENV=production` son obligatorios `JWT_SECRET`, `BASE_URL`, `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`.
@@ -58,6 +65,6 @@ El VPS Contabo de Roberto ejecuta la app en `/srv/apps/ticketfactura` detrás de
 
 ## Pendiente (v2)
 - PDF adjunto (el HTML ya es imprimible)
-- Panel del comercio (listado de facturas, alta self-service)
+- Login/autoservicio completo del comercio (ahora `/panel` usa API key)
 - VeriFactu cuando aplique (la numeración ya es compatible)
 - Integración como módulo de PrintQueue Pro

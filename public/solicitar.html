@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solicitar factura — TicketFactura</title>
+  <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+  <nav class="topnav">
+    <div class="nav-inner">
+      <a class="logo" href="/">TicketFactura</a>
+      <div class="nav-links">
+        <a href="/demo">Demo QR</a>
+        <a href="/solicitar">Subir ticket</a>
+        <a href="/panel">Panel comercio</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="card wide">
+      <h1>Solicitar factura subiendo el ticket</h1>
+      <p class="nota">Flujo recuperado del proyecto anterior: subir ticket, detectar datos, seleccionar empresa y confirmar datos fiscales.</p>
+
+      <div class="steps" id="steps">
+        <div class="step active" data-step-label="1"><span class="num">1</span>Subir ticket</div>
+        <div class="step-line"></div>
+        <div class="step" data-step-label="2"><span class="num">2</span>Empresa</div>
+        <div class="step-line"></div>
+        <div class="step" data-step-label="3"><span class="num">3</span>Confirmar</div>
+      </div>
+
+      <div id="msg"></div>
+
+      <section id="step1">
+        <h2>1. Foto del ticket</h2>
+        <label>Imagen del ticket
+          <input id="ticketImage" type="file" accept="image/*" capture="environment">
+        </label>
+        <img id="preview" class="preview" alt="Previsualización del ticket" hidden>
+        <div class="actions">
+          <span class="nota">Si el OCR no está configurado, podrás rellenarlo a mano.</span>
+          <button id="ocrBtn" type="button">Continuar</button>
+        </div>
+      </section>
+
+      <section id="step2" hidden>
+        <h2>2. Selecciona empresa</h2>
+        <div id="ocrInfo" class="alert ok" hidden></div>
+        <div class="results">
+          <label>Buscar empresa
+            <input id="companySearch" placeholder="Copistería, ferretería, NIF..." autocomplete="off">
+          </label>
+          <div id="companyResults" class="dropdown" hidden></div>
+        </div>
+        <div id="selectedCompany" class="alert ok" hidden></div>
+        <div class="grid two">
+          <label>Fecha ticket <input id="ticketDate" type="date"></label>
+          <label>Total ticket (€) <input id="ticketTotal" inputmode="decimal" placeholder="12.80"></label>
+        </div>
+        <label>Concepto <input id="concepto" value="Venta" maxlength="140"></label>
+        <label>Referencia ticket <input id="ticketRef" placeholder="TICKET-001"></label>
+        <div class="actions">
+          <button class="secondary" type="button" data-back="1">Volver</button>
+          <button type="button" data-next="3">Continuar</button>
+        </div>
+      </section>
+
+      <section id="step3" hidden>
+        <h2>3. Confirma tus datos fiscales</h2>
+        <div class="grid two">
+          <label>NIF / CIF <input id="nif" required placeholder="12345678A"></label>
+          <label>Nombre / razón social <input id="nombre" required></label>
+          <label>Email <input id="email" type="email" required></label>
+          <label>Teléfono <input id="phone" type="tel"></label>
+        </div>
+        <label>Dirección fiscal <input id="direccion"></label>
+        <label>Código postal <input id="postalCode"></label>
+        <div class="actions">
+          <button class="secondary" type="button" data-back="2">Volver</button>
+          <button id="submitBtn" type="button">Solicitar factura</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+<script>
+let currentStep = 1;
+let selectedCompany = null;
+const $ = (id) => document.getElementById(id);
+function setMsg(text, type='error') { $('msg').innerHTML = text ? `<div class="alert ${type}">${text}</div>` : ''; }
+function setStep(n) {
+  currentStep = n;
+  for (const id of ['step1','step2','step3']) $(id).hidden = id !== `step${n}`;
+  document.querySelectorAll('.step').forEach((el, idx) => el.classList.toggle('active', idx + 1 <= n));
+  setMsg('');
+}
+function saveClient() {
+  const data = { nif: $('nif').value, nombre: $('nombre').value, email: $('email').value, phone: $('phone').value, direccion: $('direccion').value, postalCode: $('postalCode').value };
+  try { localStorage.setItem('tf:cliente', JSON.stringify(data)); } catch {}
+}
+function loadClient() {
+  try {
+    const data = JSON.parse(localStorage.getItem('tf:cliente') || '{}');
+    for (const [k,v] of Object.entries(data)) if ($(k) && v) $(k).value = v;
+  } catch {}
+}
+loadClient();
+$('ticketImage').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('preview').src = URL.createObjectURL(file);
+  $('preview').hidden = false;
+});
+$('ocrBtn').addEventListener('click', async () => {
+  const file = $('ticketImage').files[0];
+  if (!file) return setMsg('Selecciona una imagen del ticket.');
+  $('ocrBtn').disabled = true;
+  $('ocrBtn').textContent = 'Procesando...';
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const r = await fetch('/api/invoices/ocr', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (data.amount) $('ticketTotal').value = Number(data.amount).toFixed(2);
+    if (data.date) $('ticketDate').value = normalDate(data.date);
+    if (data.companyName) {
+      $('companySearch').value = data.companyName;
+      searchCompanies(data.companyName);
+    }
+    $('ocrInfo').hidden = false;
+    $('ocrInfo').textContent = data.enabled === false ? data.message : 'OCR procesado. Revisa los datos detectados.';
+    setStep(2);
+  } catch (err) {
+    setMsg('No se pudo procesar OCR. Continúa rellenando manualmente.');
+    setStep(2);
+  } finally {
+    $('ocrBtn').disabled = false;
+    $('ocrBtn').textContent = 'Continuar';
+  }
+});
+function normalDate(v) {
+  const m = String(v).match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/);
+  if (!m) return '';
+  const y = m[3].length === 2 ? `20${m[3]}` : m[3];
+  return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+let searchTimer;
+$('companySearch').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => searchCompanies(e.target.value), 180);
+});
+async function searchCompanies(q) {
+  if (!q || q.length < 2) { $('companyResults').hidden = true; return; }
+  const r = await fetch(`/api/companies/search?q=${encodeURIComponent(q)}`);
+  const companies = await r.json();
+  $('companyResults').innerHTML = companies.map(c => `<button type="button" data-id="${c.id}"><strong>${esc(c.name)}</strong><br><span class="nota">NIF: ${esc(c.nif)} · ${esc(c.address || '')}</span></button>`).join('');
+  $('companyResults').hidden = !companies.length;
+  $('companyResults').querySelectorAll('button').forEach((btn, idx) => btn.addEventListener('click', () => selectCompany(companies[idx])));
+}
+function selectCompany(c) {
+  selectedCompany = c;
+  $('companySearch').value = c.name;
+  $('companyResults').hidden = true;
+  $('selectedCompany').hidden = false;
+  $('selectedCompany').innerHTML = `<strong>✓ ${esc(c.name)}</strong><br>NIF: ${esc(c.nif)}<br>${esc(c.address || '')}`;
+  if (!$('ticketRef').value) $('ticketRef').value = `WEB-${Date.now()}`;
+}
+document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => setStep(Number(b.dataset.back))));
+document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => {
+  if (!selectedCompany) return setMsg('Selecciona una empresa.');
+  if (!Number($('ticketTotal').value.replace(',', '.'))) return setMsg('Indica el total del ticket.');
+  setStep(Number(b.dataset.next));
+}));
+$('submitBtn').addEventListener('click', async () => {
+  if (!selectedCompany) return setMsg('Selecciona una empresa.');
+  const clientData = { nif: $('nif').value, name: $('nombre').value, email: $('email').value, phone: $('phone').value, address: $('direccion').value, postalCode: $('postalCode').value };
+  saveClient();
+  const body = {
+    companyId: selectedCompany.id,
+    clientData,
+    total: $('ticketTotal').value.replace(',', '.'),
+    concepto: $('concepto').value,
+    ticket_ref: $('ticketRef').value || `WEB-${Date.now()}`,
+    tipo_iva: 21,
+  };
+  $('submitBtn').disabled = true;
+  $('submitBtn').textContent = 'Enviando...';
+  try {
+    const r = await fetch('/api/invoices/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await r.json();
+    if (!r.ok) return setMsg(data.error || 'Error al solicitar factura');
+    setMsg(`${data.message}. <a href="${data.factura_url}" target="_blank">Ver factura</a>`, 'ok');
+  } finally {
+    $('submitBtn').disabled = false;
+    $('submitBtn').textContent = 'Solicitar factura';
+  }
+});
+function esc(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+</script>
+</body>
+</html>

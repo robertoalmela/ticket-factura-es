@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel comercio — TicketFactura</title>
+  <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+  <nav class="topnav">
+    <div class="nav-inner">
+      <a class="logo" href="/">TicketFactura</a>
+      <div class="nav-links">
+        <a href="/demo">Demo QR</a>
+        <a href="/solicitar">Subir ticket</a>
+        <a href="/panel">Panel comercio</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <section class="card wide hero-card">
+      <h1>Panel del comercio</h1>
+      <p class="lead">Vista recuperada del proyecto anterior: métricas, facturas generadas y acceso con API key del comercio. De momento es un panel simple sin login pesado para no romper el MVP QR.</p>
+      <label style="color:#fff">API key
+        <input id="apiKey" placeholder="tf_..." autocomplete="off">
+      </label>
+      <div class="actions">
+        <button id="loadBtn" type="button">Cargar panel</button>
+        <button class="secondary" id="demoKeyBtn" type="button">Usar demo local</button>
+      </div>
+      <p class="nota" style="color:#dff7fb">En producción esto irá con login del comercio; ahora sirve para probar y enseñar el producto rápido.</p>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div id="msg"></div>
+      <div class="grid three">
+        <div class="panel stat"><div class="icon">👥</div><div><small>Total clientes</small><strong id="clientes">—</strong></div></div>
+        <div class="panel stat"><div class="icon">📄</div><div><small>Facturas este mes</small><strong id="mes">—</strong></div></div>
+        <div class="panel stat"><div class="icon">€</div><div><small>Total facturado</small><strong id="total">—</strong></div></div>
+      </div>
+
+      <div class="grid two" style="margin-top:18px">
+        <div class="panel">
+          <h2>Comercio</h2>
+          <div id="commerceInfo"></div>
+          <h3 style="margin-top:18px">Crear ticket QR de prueba</h3>
+          <div class="grid two">
+            <label>Total <input id="newTotal" value="12.80" inputmode="decimal"></label>
+            <label>Referencia <input id="newRef" value="PANEL-001"></label>
+          </div>
+          <label>Concepto <input id="newConcept" value="Material de oficina"></label>
+          <button id="createTicketBtn" type="button">Generar URL de ticket</button>
+          <pre id="ticketOut" class="code" hidden></pre>
+        </div>
+        <div class="panel">
+          <h2>Resumen técnico</h2>
+          <p><span class="badge ok">QR activo</span> <span class="badge info">Serie legal</span> <span class="badge warn">SMTP demo si no está configurado</span></p>
+          <p class="nota">Endpoints compatibles añadidos: <code>/api/companies/search</code>, <code>/api/invoices/request</code>, <code>/api/invoices/ocr</code>, <code>/api/dashboard</code>.</p>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:18px">
+        <h2>Facturas recientes</h2>
+        <div style="overflow:auto">
+          <table>
+            <thead><tr><th>Número</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Ticket</th><th>Fecha</th></tr></thead>
+            <tbody id="facturas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const money = (n) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(n || 0));
+function msg(text, type='error') { $('msg').innerHTML = text ? `<div class="alert ${type}">${text}</div>` : ''; }
+try { $('apiKey').value = localStorage.getItem('tf:apiKey') || ''; } catch {}
+$('demoKeyBtn').addEventListener('click', () => {
+  $('apiKey').value = 'DEMO_KEY_AUTO';
+  msg('Para obtener la API key real de demo en este servidor: mira la salida de npm run seed o usa /api/tickets desde backend. Si no carga, pega la key real.', 'ok');
+});
+$('loadBtn').addEventListener('click', loadDashboard);
+async function loadDashboard() {
+  const key = $('apiKey').value.trim();
+  if (!key) return msg('Pega la API key del comercio.');
+  try { localStorage.setItem('tf:apiKey', key); } catch {}
+  const r = await fetch(`/api/dashboard?api_key=${encodeURIComponent(key)}`);
+  const data = await r.json();
+  if (!r.ok) return msg(data.error || 'No se pudo cargar panel');
+  $('dashboard').hidden = false;
+  msg('Panel cargado.', 'ok');
+  $('clientes').textContent = new Set((data.facturas || []).map(f => f.cliente?.nif)).size;
+  $('mes').textContent = data.stats?.facturas_mes || 0;
+  $('total').textContent = money(data.stats?.total_facturado);
+  $('commerceInfo').innerHTML = `<p><strong>${esc(data.comercio.name)}</strong><br>NIF: ${esc(data.comercio.nif)}<br>${esc(data.comercio.address || '')}<br>Serie: <span class="badge info">${esc(data.comercio.serie)}</span></p>`;
+  $('facturas').innerHTML = (data.facturas || []).map(f => `<tr><td>${esc(f.numero)}</td><td>${esc(f.cliente?.nombre)}<br><span class="nota">${esc(f.cliente?.email)}</span></td><td>${money(f.total)}</td><td><span class="badge ok">${esc(f.status)}</span></td><td>${esc(f.ticket_ref || '')}</td><td>${esc(f.created_at || f.fecha)}</td></tr>`).join('') || '<tr><td colspan="6" class="nota">Sin facturas todavía</td></tr>';
+}
+$('createTicketBtn').addEventListener('click', async () => {
+  const key = $('apiKey').value.trim();
+  const body = { total: $('newTotal').value.replace(',', '.'), concepto: $('newConcept').value, ticket_ref: $('newRef').value || `PANEL-${Date.now()}` };
+  const r = await fetch('/api/tickets', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key }, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) return msg(data.error || 'No se pudo crear ticket');
+  $('ticketOut').hidden = false;
+  $('ticketOut').textContent = `${data.url}\nQR: /api/qr?url=${encodeURIComponent(data.url)}`;
+});
+function esc(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+</script>
+</body>
+</html>

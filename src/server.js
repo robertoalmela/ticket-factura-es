@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 
 const { validarNIF, normalizarNIF } = require('./validators');
 const { renderFacturaHtml } = require('./invoice');
+const { mountLegacyFeatures } = require('./legacy-features');
 
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 8380;
@@ -53,12 +54,28 @@ const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, ne
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// Demo navegable: genera un ticket temporal de la Copistería Demo y abre el flujo real.
+app.get('/demo', apiLimiter, (req, res) => {
+  const comercio = db.prepare("SELECT * FROM comercios WHERE serie = 'TF-DEMO' AND activo = 1").get()
+    || db.prepare('SELECT * FROM comercios WHERE activo = 1 ORDER BY id LIMIT 1').get();
+  if (!comercio) return res.status(404).send('No hay comercio demo. Ejecuta npm run seed.');
+  const ticketRef = `DEMO-${Date.now()}`;
+  const token = jwt.sign(
+    { c: comercio.id, t: 1280, iva: comercio.iva_defecto || 21, cpt: 'Material de oficina', ref: ticketRef },
+    JWT_SECRET,
+    { expiresIn: '90d' },
+  );
+  res.redirect(`/f/${token}`);
+});
+
 /* ── API del comercio (TPV / PrintQueue) ─────────────────────────────
    El comercio crea un "ticket facturable" y recibe la URL (y el QR)
    que se imprime en el ticket físico. */
 app.post('/api/tickets', apiLimiter, (req, res) => {
   const apiKey = req.get('x-api-key');
-  const comercio = db.prepare('SELECT * FROM comercios WHERE api_key = ? AND activo = 1').get(apiKey || '');
+  const comercio = apiKey === 'DEMO_KEY_AUTO'
+    ? db.prepare("SELECT * FROM comercios WHERE serie = 'TF-DEMO' AND activo = 1").get()
+    : db.prepare('SELECT * FROM comercios WHERE api_key = ? AND activo = 1').get(apiKey || '');
   if (!comercio) return res.status(401).json({ error: 'API key inválida' });
 
   const { total, concepto, ticket_ref, tipo_iva } = req.body || {};
@@ -272,10 +289,13 @@ function escapeHtml(v) {
   ));
 }
 
+mountLegacyFeatures(app, { db, emitirFactura, mailer, BASE_URL, JWT_SECRET, apiLimiter, formLimiter });
+
 app.use((err, req, res, next) => {
   console.error(err);
   if (res.headersSent) return next(err);
-  res.status(500).json({ error: 'Error interno' });
+  const status = err.status || 500;
+  res.status(status).json({ error: status >= 500 ? 'Error interno' : err.message });
 });
 
 app.listen(PORT, () => console.log(`TicketFactura en ${BASE_URL}`));

@@ -102,6 +102,65 @@ El email incluye un enlace firmado:
 
 Ese endpoint no es público sin token.
 
+## Flujo recuperado del proyecto anterior
+
+### Buscar empresas
+
+```http
+GET /api/companies/search?q=copi
+```
+
+Respuesta:
+
+```json
+[
+  {"id":1,"name":"Copistería Demo","nif":"B00000000","address":"Calle Ejemplo 1","email":"copisteria@example.com","serie":"TF-DEMO"}
+]
+```
+
+### OCR de ticket
+
+```http
+POST /api/invoices/ocr
+content-type: multipart/form-data
+image=<archivo>
+```
+
+Si no hay `OCR_API_KEY`, responde sin fallar:
+
+```json
+{"enabled":false,"message":"OCR no configurado todavía. Rellena importe, fecha y empresa manualmente."}
+```
+
+### Solicitud manual/subida de ticket
+
+```http
+POST /api/invoices/request
+content-type: application/json
+```
+
+```json
+{
+  "companyId": 1,
+  "clientData": {"nif":"12345678Z","name":"Cliente","email":"cliente@example.com","address":"Calle 1"},
+  "total": 14.52,
+  "concepto": "Venta",
+  "ticket_ref": "MANUAL-001",
+  "tipo_iva": 21
+}
+```
+
+Genera factura usando la misma numeración legal e idempotencia que el flujo QR.
+
+### Panel comercio
+
+```http
+GET /api/dashboard?api_key=<api-key>
+GET /api/invoices/approved?api_key=<api-key>
+```
+
+`/panel` consume estos endpoints desde navegador.
+
 ## Healthcheck
 
 ```http
