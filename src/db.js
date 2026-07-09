@@ -1,8 +1,15 @@
 const Database = require('better-sqlite3');
+const fs = require('fs');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, '..', 'data', 'ticketfactura.db'));
+const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+fs.mkdirSync(dataDir, { recursive: true });
+
+const dbPath = process.env.DB_PATH || path.join(dataDir, 'ticketfactura.db');
+const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS comercios (
@@ -44,6 +51,10 @@ CREATE TABLE IF NOT EXISTS facturas (
   created_at TEXT DEFAULT (datetime('now')),
   UNIQUE (comercio_id, anio, secuencia)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_facturas_ticket_nif
+ON facturas (comercio_id, ticket_ref, cliente_nif)
+WHERE ticket_ref IS NOT NULL;
 `);
 
 // Migración: columnas de continuidad de serie en BDs anteriores

@@ -3,16 +3,22 @@
   "version": "0.1.0",
   "description": "Factura tu ticket con un QR — sin apps, sin esperas",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20 <25"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "commerce:create": "node src/create-commerce.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^7.0.0",
+    "nodemailer": "^9.0.3",
     "qrcode": "^1.5.4"
   }
 }

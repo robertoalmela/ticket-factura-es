@@ -12,12 +12,48 @@ npm start        # http://localhost:8380 (landing en /)
 ```
 
 ## Flujo (verificado e2e)
-1. TPV/PrintQueue: `POST /api/tickets` con `x-api-key` → `{url}` (y `GET /api/qr?url=...` da el PNG para el ticket)
+1. TPV/PrintQueue: `POST /api/tickets` con `x-api-key` y `ticket_ref` único → `{url}` (y `GET /api/qr?url=...` da el PNG para el ticket)
 2. Cliente: abre `/f/<token>` → NIF+nombre+email (se recuerdan en su móvil) → `POST`
 3. Emisión: numeración `SERIE-AÑO-NNNN` sin huecos (transacción+UNIQUE), email al cliente con copia al comercio, idempotente por ticket+NIF
 
 ## Configurar producción (.env)
-`JWT_SECRET` (obligatorio), `BASE_URL`, `SMTP_HOST/PORT/USER/PASS/FROM` (sin SMTP: modo dev, loguea en vez de enviar).
+Ver `.env.example`. En `NODE_ENV=production` son obligatorios `JWT_SECRET`, `BASE_URL`, `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`.
+
+Recomendado en VPS: ejecutar la app detras de Nginx/Caddy con HTTPS, poner `DATA_DIR` en un volumen persistente y configurar backups diarios de la base SQLite.
+
+Crear un comercio real:
+```bash
+COMERCIO_NOMBRE="Copisteria Centro" COMERCIO_NIF="B12345674" COMERCIO_DIRECCION="Calle..." COMERCIO_EMAIL="facturas@dominio.com" COMERCIO_SERIE="CC" npm run commerce:create
+```
+
+El script muestra la API key que debe usar el TPV/PrintQueue en `x-api-key`.
+
+## Documentación
+
+- [`docs/API.md`](docs/API.md): endpoints para TPV/PrintQueue, QR, flujo cliente y healthcheck.
+- [`DEPLOYMENT.md`](DEPLOYMENT.md): despliegue en VPS Contabo, PM2/Caddy, variables de entorno y backups.
+- `.env.example`: plantilla de configuración de producción.
+
+## Comandos útiles
+
+```bash
+npm ci
+npm run seed
+npm start
+```
+
+Comprobar salud:
+
+```bash
+curl http://localhost:8380/health
+```
+
+## Despliegue actual de prueba
+
+El VPS Contabo de Roberto ejecuta la app en `/srv/apps/ticketfactura` detrás de Caddy.
+
+- URL temporal hasta configurar DNS: `http://173.249.46.245/`
+- Dominio previsto: `ticket-factura.es`
 
 ## Pendiente (v2)
 - PDF adjunto (el HTML ya es imprimible)

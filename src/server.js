@@ -1,52 +1,85 @@
 const express = require('express');
+const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const path = require('path');
 const nodemailer = require('nodemailer');
+const rateLimit = require('express-rate-limit');
 
-const { db, emitirFactura } = require('./db');
 const { validarNIF, normalizarNIF } = require('./validators');
 const { renderFacturaHtml } = require('./invoice');
 
+const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 8380;
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-CAMBIAR-EN-PRODUCCION';
+
+if (isProduction) {
+  if (!process.env.BASE_URL) throw new Error('BASE_URL es obligatorio en producción');
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET es obligatorio en producción');
+  if (!process.env.SMTP_HOST) throw new Error('SMTP_HOST es obligatorio en producción');
+  if (!process.env.SMTP_USER) throw new Error('SMTP_USER es obligatorio en producción');
+  if (!process.env.SMTP_PASS) throw new Error('SMTP_PASS es obligatorio en producción');
+  if (!process.env.SMTP_FROM) throw new Error('SMTP_FROM es obligatorio en producción');
+}
+
+const { db, emitirFactura } = require('./db');
+const smtpAuth = process.env.SMTP_USER || process.env.SMTP_PASS
+  ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } }
+  : {};
 
 // SMTP: en desarrollo, transport JSON (loguea en vez de enviar).
 const mailer = process.env.SMTP_HOST
   ? nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      secure: process.env.SMTP_SECURE === 'true',
+      ...smtpAuth,
     })
   : nodemailer.createTransport({ jsonTransport: true });
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.disable('x-powered-by');
+if (isProduction) app.set('trust proxy', Number(process.env.TRUST_PROXY || 1));
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json({ limit: '20kb' }));
+app.use(express.urlencoded({ extended: true, limit: '20kb' }));
+app.use(express.static(path.join(__dirname, '..', 'public'), { dotfiles: 'deny' }));
+
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false });
+const formLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
+
+const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+app.get('/health', (req, res) => res.json({ ok: true }));
 
 /* ── API del comercio (TPV / PrintQueue) ─────────────────────────────
    El comercio crea un "ticket facturable" y recibe la URL (y el QR)
    que se imprime en el ticket físico. */
-app.post('/api/tickets', (req, res) => {
-  const apiKey = req.headers['x-api-key'];
+app.post('/api/tickets', apiLimiter, (req, res) => {
+  const apiKey = req.get('x-api-key');
   const comercio = db.prepare('SELECT * FROM comercios WHERE api_key = ? AND activo = 1').get(apiKey || '');
   if (!comercio) return res.status(401).json({ error: 'API key inválida' });
 
   const { total, concepto, ticket_ref, tipo_iva } = req.body || {};
   const totalNum = Number(total);
+  const ticketRef = String(ticket_ref || '').trim().slice(0, 60);
+  const tipoIva = Number(tipo_iva ?? comercio.iva_defecto);
   if (!Number.isFinite(totalNum) || totalNum <= 0) {
     return res.status(400).json({ error: 'total (importe con IVA) es obligatorio y > 0' });
+  }
+  if (!ticketRef) return res.status(400).json({ error: 'ticket_ref es obligatorio' });
+  if (!Number.isFinite(tipoIva) || tipoIva < 0 || tipoIva > 100) {
+    return res.status(400).json({ error: 'tipo_iva no válido' });
   }
 
   const token = jwt.sign(
     {
       c: comercio.id,
       t: Math.round(totalNum * 100),          // céntimos
-      iva: Number(tipo_iva ?? comercio.iva_defecto),
+      iva: tipoIva,
       cpt: String(concepto || 'Venta').slice(0, 140),
-      ref: String(ticket_ref || '').slice(0, 60),
+      ref: ticketRef,
     },
     JWT_SECRET,
     { expiresIn: '90d' },                      // plazo razonable para pedir factura
@@ -57,11 +90,12 @@ app.post('/api/tickets', (req, res) => {
 });
 
 // QR en PNG para imprimir junto al ticket
-app.get('/api/qr', async (req, res) => {
+app.get('/api/qr', apiLimiter, asyncHandler(async (req, res) => {
   const { url } = req.query;
-  if (!url || !String(url).startsWith(BASE_URL)) return res.status(400).send('url inválida');
-  res.type('png').send(await QRCode.toBuffer(String(url), { width: 300, margin: 1 }));
-});
+  const qrUrl = validateFacturaUrl(url);
+  if (!qrUrl) return res.status(400).send('url inválida');
+  res.type('png').send(await QRCode.toBuffer(qrUrl, { width: 300, margin: 1 }));
+}));
 
 /* ── Flujo del cliente final ───────────────────────────────────────── */
 function decodeTicket(token) {
@@ -83,11 +117,10 @@ app.get('/f/:token', (req, res) => {
     comercio: comercio.nombre,
     total: (data.t / 100).toFixed(2),
     concepto: data.cpt,
-    token: req.params.token,
   }));
 });
 
-app.post('/f/:token', async (req, res) => {
+app.post('/f/:token', formLimiter, asyncHandler(async (req, res) => {
   let ctx;
   try {
     ctx = decodeTicket(req.params.token);
@@ -126,7 +159,8 @@ app.post('/f/:token', async (req, res) => {
     ticket_ref: data.ref || null,
   });
 
-  const html = renderFacturaHtml(factura, comercio);
+  const facturaUrl = `${BASE_URL}/factura/${factura.id}/html?token=${signFacturaToken(factura.id)}`;
+  const html = addFacturaLink(renderFacturaHtml(factura, comercio), facturaUrl);
   const envio = await mailer.sendMail({
     from: process.env.SMTP_FROM || `"${comercio.nombre} — facturas" <facturas@ticketfactura.local>`,
     to: factura.cliente_email,
@@ -142,25 +176,59 @@ app.post('/f/:token', async (req, res) => {
     reenviada: Boolean(previa),
     dev_preview: process.env.SMTP_HOST ? undefined : JSON.parse(envio.message).subject,
   });
-});
+}));
 
-// Vista HTML de la factura (enlace del email en producción llevaría aquí con auth)
+// Vista HTML de la factura: solo accesible con token firmado incluido en el email.
 app.get('/factura/:id/html', (req, res) => {
+  if (!verifyFacturaToken(req.params.id, req.query.token)) return res.status(403).send('No autorizado');
   const f = db.prepare('SELECT * FROM facturas WHERE id = ?').get(req.params.id);
   if (!f) return res.status(404).send('No encontrada');
   const c = db.prepare('SELECT * FROM comercios WHERE id = ?').get(f.comercio_id);
   res.send(renderFacturaHtml(f, c));
 });
 
-function renderPedirPage({ comercio, total, concepto, token }) {
+function validateFacturaUrl(value) {
+  try {
+    const parsed = new URL(String(value));
+    const base = new URL(BASE_URL);
+    if (parsed.origin !== base.origin) return null;
+    if (!parsed.pathname.startsWith('/f/')) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function signFacturaToken(id) {
+  return jwt.sign({ inv: Number(id) }, JWT_SECRET, { expiresIn: '180d' });
+}
+
+function verifyFacturaToken(id, token) {
+  try {
+    const data = jwt.verify(String(token || ''), JWT_SECRET);
+    return Number(data.inv) === Number(id);
+  } catch {
+    return false;
+  }
+}
+
+function addFacturaLink(html, url) {
+  const link = `<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;text-align:center;margin:24px 0"><a href="${escapeHtml(url)}">Ver factura online</a></p>`;
+  return html.replace('</body>', `${link}</body>`);
+}
+
+function renderPedirPage({ comercio, total, concepto }) {
+  const comercioHtml = escapeHtml(comercio);
+  const conceptoHtml = escapeHtml(concepto);
+  const totalHtml = escapeHtml(total);
   return `<!doctype html><html lang="es"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tu factura de ${comercio}</title>
+  <title>Tu factura de ${comercioHtml}</title>
   <link rel="stylesheet" href="/estilo.css"></head>
   <body class="pedir">
   <main class="card">
     <h1>Factura de tu compra</h1>
-    <p class="resumen"><strong>${comercio}</strong> · ${concepto} · <strong>${total} €</strong></p>
+    <p class="resumen"><strong>${comercioHtml}</strong> · ${conceptoHtml} · <strong>${totalHtml} €</strong></p>
     <form id="form">
       <label>NIF / CIF <input name="nif" required placeholder="12345678A" autocomplete="on"></label>
       <label>Nombre o razón social <input name="nombre" required></label>
@@ -197,5 +265,17 @@ function renderPedirPage({ comercio, total, concepto, token }) {
   </script>
   </body></html>`;
 }
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (ch) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Error interno' });
+});
 
 app.listen(PORT, () => console.log(`TicketFactura en ${BASE_URL}`));
