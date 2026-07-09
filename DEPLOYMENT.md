@@ -10,10 +10,11 @@
 - Datos persistentes: `/srv/apps/ticketfactura/data/ticketfactura.db`
 - Proxy público: Caddy (`/etc/caddy/Caddyfile`)
 
-Mientras `ticket-factura.es` no tenga DNS apuntando al VPS, la URL de prueba es:
+Mientras `ticket-factura.es` no tenga DNS apuntando al VPS, las URLs de prueba son:
 
 ```text
-http://173.249.46.245/
+http://173.249.46.245/       # landing
+http://173.249.46.245/demo   # ticket demo con formulario de factura
 ```
 
 Cuando el dominio apunte al VPS, cambiar `BASE_URL` en `.env` a:

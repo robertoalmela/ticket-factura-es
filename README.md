@@ -53,6 +53,7 @@ curl http://localhost:8380/health
 El VPS Contabo de Roberto ejecuta la app en `/srv/apps/ticketfactura` detrás de Caddy.
 
 - URL temporal hasta configurar DNS: `http://173.249.46.245/`
+- Ticket demo para probar formulario: `http://173.249.46.245/demo`
 - Dominio previsto: `ticket-factura.es`
 
 ## Pendiente (v2)
