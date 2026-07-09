@@ -11,6 +11,7 @@
   --warn: #b45309;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; margin: 0; background: var(--bg); color: var(--ink); line-height: 1.55; }
 a { color: var(--brand-2); }
 .topnav { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid var(--line); box-shadow: 0 2px 14px rgba(15,23,42,.04); }
