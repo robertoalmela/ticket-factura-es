@@ -1,0 +1,13 @@
+{
+  "slug": "ticketfactura",
+  "name": "TicketFactura",
+  "type": "docker",
+  "github_repo": "https://github.com/robertoalmela/ticket-factura-es",
+  "public_url": "https://ticketfactura.173.249.46.245.sslip.io",
+  "vps_path": "/srv/apps/ticketfactura",
+  "deploy_method": "docker-compose",
+  "owner": "Roberto",
+  "status": "preview",
+  "last_verified": "2026-07-10",
+  "notes": "MVP QR + flujo heredado /solicitar y panel comercio demo; pendiente DNS y SMTP para producción."
+}
