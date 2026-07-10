@@ -41,7 +41,9 @@ const mailer = process.env.SMTP_HOST
 
 const app = express();
 app.disable('x-powered-by');
-if (isProduction) app.set('trust proxy', Number(process.env.TRUST_PROXY || 1));
+if (process.env.TRUST_PROXY || isProduction) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY || 1));
+}
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '20kb' }));
 app.use(express.urlencoded({ extended: true, limit: '20kb' }));
