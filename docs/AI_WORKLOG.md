@@ -5,6 +5,12 @@ Bitácora de trabajo de agentes IA. Añadir entradas arriba, bajo "Últimas entr
 ## Últimas entradas
 
 <!-- AI_WORKLOG:START -->
+### 2026-07-10 — IA (Claude) · iteración 2: invitación a vendedores
+
+- Resumen: por decisión de Roberto, solo se factura si el vendedor está registrado. Vendedor sin registrar → solicitud `PENDIENTE` (nueva tabla `solicitudes`, dedupe por comprador+NIF+ticket_ref) + email de invitación con enlace `/vendedor/alta/<token>` (JWT 30d). El alta crea el comercio (serie `TF-<NIF>`, api_key) y emite automáticamente todas sus solicitudes pendientes con email a cada comprador y copia al vendedor. Eliminada el alta automática y la mención art. 5. UI: email del vendedor requerido si no está registrado, estado "⏳ Invitación enviada", sección "Pendientes del vendedor". Añadido `.github/workflows/deploy.yml` (deploy VPS por SSH con secrets).
+- Verificación: smoke API del ciclo completo (pendiente→invitación→alta→factura emitida→panel del vendedor operativo) + regresión + Playwright sin errores JS.
+- Siguiente paso: secrets del workflow o deploy manual; SMTP real (crítico para invitaciones); OCR_API_KEY; DNS.
+
 ### 2026-07-10 — IA (Claude)
 
 - Resumen: pivote a flujo comprador-céntrico. Nueva app `/app`: el autónomo se registra una vez (email+contraseña scrypt, cookie JWT) con sus datos fiscales; foto al ticket → OCR detecta vendedor/fecha/total/IVA → factura emitida con la serie del vendedor (existente por NIF, o alta automática `TF-<NIF>` con `auto_creado=1`) → email a comprador y vendedor. Historial "Mis facturas". Landing reorientada al autónomo; QR se mantiene para comercios.

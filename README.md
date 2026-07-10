@@ -16,9 +16,11 @@ npm start        # http://localhost:8380 (landing en /)
 ### Comprador — flujo principal (`/app`)
 1. Registro único: email+contraseña y datos fiscales (NIF, nombre, dirección). Sesión por cookie (JWT, 180 días).
 2. Foto al ticket → `POST /api/invoices/ocr` detecta NIF/nombre/dirección/email del vendedor, fecha, total e IVA. Todo revisable a mano.
-3. `POST /api/comprador/factura`: si el vendedor no existe se da de alta automático con serie propia (`TF-<NIF>`); si existe (por NIF) se usa su serie real. Numeración `SERIE-AÑO-NNNN` sin huecos, idempotente por ticket+comprador.
-4. Email con la factura al comprador y copia al vendedor (si hay email). Las facturas de vendedor auto-creado indican "expedida por el destinatario" (art. 5 RD 1619/2012).
-5. `GET /api/comprador/facturas`: historial del comprador con enlaces firmados.
+3. `POST /api/comprador/factura`:
+   - **Vendedor registrado** (coincidencia por NIF): factura inmediata con su serie real, email al comprador con copia al vendedor. Numeración `SERIE-AÑO-NNNN` sin huecos, idempotente por ticket+comprador.
+   - **Vendedor sin registrar**: la solicitud queda `PENDIENTE` y el vendedor recibe un email de invitación (obligatorio aportar su email) con enlace de alta firmado (30 días).
+4. Alta del vendedor (`/vendedor/alta/<token>`): completa nombre/dirección/email, se crea el comercio con serie `TF-<NIF>` y **todas sus solicitudes pendientes se emiten y envían automáticamente** a cada comprador con copia al vendedor. Recibe su API key para el panel.
+5. `GET /api/comprador/facturas`: historial del comprador (facturas + solicitudes pendientes) con enlaces firmados.
 
 ### QR / TPV — para comercios adheridos
 1. TPV/PrintQueue: `POST /api/tickets` con `x-api-key` y `ticket_ref` único → `{url}` (y `GET /api/qr?url=...` da el PNG para el ticket)

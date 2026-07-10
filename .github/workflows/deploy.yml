@@ -1,0 +1,41 @@
+# Despliegue automático al VPS Contabo.
+#
+# Requiere estos secrets en GitHub (Settings → Secrets and variables → Actions):
+#   VPS_HOST     → 173.249.46.245
+#   VPS_USER     → usuario SSH del VPS (p. ej. root o roberto)
+#   VPS_SSH_KEY  → clave privada SSH con acceso al VPS (crear una dedicada:
+#                  ssh-keygen -t ed25519 -f deploy_key && añadir deploy_key.pub
+#                  a ~/.ssh/authorized_keys del VPS)
+#
+# Se ejecuta en cada push a main y también manualmente (Run workflow).
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar por SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /srv/apps/ticketfactura
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            docker compose up -d --build
+            sleep 5
+            curl -fsS http://127.0.0.1:8380/health
+            docker compose ps

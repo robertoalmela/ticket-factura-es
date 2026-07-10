@@ -196,21 +196,26 @@ Body:
 
 ```json
 {
-  "vendedor": {"nif": "B12345674", "nombre": "Gasolinera El Cruce", "direccion": "opcional", "email": "opcional"},
-  "total": "45,60",
+  "vendedor": {"nif": "B12345674", "nombre": "Bar Manolo", "direccion": "opcional", "email": "obligatorio si no está registrado"},
+  "total": "18,50",
   "tipo_iva": 21,
   "fecha": "2026-07-09",
-  "ticket_ref": "T-8841",
-  "concepto": "Combustible"
+  "ticket_ref": "BAR-77",
+  "concepto": "Menú del día"
 }
 ```
 
-- Si el `vendedor.nif` coincide con un comercio registrado, la factura usa su serie real.
-- Si no, se da de alta automáticamente con serie `TF-<NIF>` y numeración propia.
-- Idempotente por `ticket_ref` + comprador: repetir la llamada reenvía la misma factura (`reenviada: true`).
-- El email va al comprador con copia (`cc`) al vendedor si hay email.
+- **Vendedor registrado** (por NIF): factura inmediata con su serie real → `{ok, estado:"FACTURADA", numero, reenviada, factura_url, message}`. Email al comprador con copia (`cc`) al vendedor. Idempotente por `ticket_ref` + comprador.
+- **Vendedor sin registrar**: requiere `vendedor.email` (si falta → `400` con `necesita_email_vendedor: true`). Crea/actualiza una solicitud `PENDIENTE` y envía email de invitación al vendedor → `{ok, estado:"PENDIENTE_VENDEDOR", reenviada, message}`.
 
-Respuesta: `{ok, numero, reenviada, vendedor:{nombre,nif,nuevo}, email_vendedor, factura_url, message}`.
+### Alta de vendedor por invitación
+
+```http
+GET  /vendedor/alta/<token>    → formulario de alta (token JWT firmado, 30 días)
+POST /vendedor/alta/<token>    {"nombre","direccion","email"}
+```
+
+Crea el comercio con serie `TF-<NIF>` y emite automáticamente todas las solicitudes pendientes de ese NIF, enviando cada factura a su comprador con copia al vendedor. Respuesta: `{ok, comercio:{nombre,nif,serie}, api_key, facturas_emitidas, panel_url, message}`.
 
 ### Historial del comprador
 
@@ -218,7 +223,7 @@ Respuesta: `{ok, numero, reenviada, vendedor:{nombre,nif,nuevo}, email_vendedor,
 GET /api/comprador/facturas
 ```
 
-Devuelve hasta 100 facturas con `numero`, `fecha`, `concepto`, `total`, `vendedor` y `url` firmada.
+Devuelve `{facturas: [...], pendientes: [...]}` — facturas emitidas (con `url` firmada) y solicitudes aún pendientes del alta del vendedor.
 
 ## Healthcheck
 

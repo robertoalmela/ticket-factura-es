@@ -101,7 +101,7 @@
         </div>
         <div class="grid two">
           <label>Dirección (opcional) <input id="vDireccion"></label>
-          <label>Email del vendedor (opcional) <input id="vEmail" type="email" placeholder="Para enviarle su copia"></label>
+          <label>Email del vendedor <input id="vEmail" type="email" placeholder="Necesario si aún no está en TicketFactura"></label>
         </div>
 
         <h3 style="margin-top:18px">Ticket</h3>
@@ -129,15 +129,24 @@
       </section>
 
       <section id="step3" hidden>
-        <div class="alert ok">
-          <h2 style="margin:0 0 8px">✅ Factura <span id="okNumero"></span> enviada</h2>
+        <div class="alert ok" id="okBox">
+          <h2 style="margin:0 0 8px" id="okTitulo"></h2>
           <p id="okMsg" style="margin:0"></p>
         </div>
         <div class="actions">
-          <a class="btn secondary" id="verFacturaLink" target="_blank" rel="noopener">Ver factura</a>
+          <a class="btn secondary" id="verFacturaLink" target="_blank" rel="noopener" hidden>Ver factura</a>
           <button type="button" id="otraBtn">Facturar otro ticket</button>
         </div>
       </section>
+
+      <div id="pendientesZona" hidden>
+        <h2 style="margin-top:34px">Pendientes del vendedor</h2>
+        <p class="nota">El comercio recibió una invitación por email. En cuanto se registre, la factura se emitirá sola y te llegará por email.</p>
+        <table>
+          <thead><tr><th>Fecha</th><th>Vendedor</th><th>Concepto</th><th>Total</th></tr></thead>
+          <tbody id="pendientesBody"></tbody>
+        </table>
+      </div>
 
       <h2 style="margin-top:34px">Mis facturas</h2>
       <div id="facturasVacio" class="nota">Todavía no tienes facturas. Hazle una foto a tu primer ticket.</div>
@@ -291,10 +300,20 @@ $('generarBtn').addEventListener('click', async () => {
   try {
     const r = await fetch('/api/comprador/factura', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await r.json();
-    if (!r.ok) return setMsg('msg', data.error || 'Error al generar la factura');
-    $('okNumero').textContent = data.numero + (data.reenviada ? ' (reenviada)' : '');
+    if (!r.ok) {
+      setMsg('msg', data.error || 'Error al generar la factura');
+      if (data.necesita_email_vendedor) $('vEmail').focus();
+      return;
+    }
+    if (data.estado === 'PENDIENTE_VENDEDOR') {
+      $('okTitulo').textContent = '⏳ Invitación enviada al vendedor';
+      $('verFacturaLink').hidden = true;
+    } else {
+      $('okTitulo').textContent = `✅ Factura ${data.numero || ''}${data.reenviada ? ' (reenviada)' : ''} enviada`;
+      $('verFacturaLink').hidden = !data.factura_url;
+      if (data.factura_url) $('verFacturaLink').href = data.factura_url;
+    }
     $('okMsg').textContent = data.message;
-    $('verFacturaLink').href = data.factura_url;
     setStep(3);
     cargarFacturas();
   } finally {
@@ -313,14 +332,26 @@ $('otraBtn').addEventListener('click', () => {
   setStep(1);
 });
 
-/* ── Mis facturas ── */
+/* ── Mis facturas y pendientes ── */
 async function cargarFacturas() {
   const r = await fetch('/api/comprador/facturas');
   if (!r.ok) return;
-  const rows = await r.json();
-  $('facturasVacio').hidden = rows.length > 0;
-  $('facturasTabla').hidden = rows.length === 0;
-  $('facturasBody').innerHTML = rows.map((f) => `
+  const data = await r.json();
+  const facturas = data.facturas || [];
+  const pendientes = data.pendientes || [];
+
+  $('pendientesZona').hidden = pendientes.length === 0;
+  $('pendientesBody').innerHTML = pendientes.map((s) => `
+    <tr>
+      <td>${esc(s.fecha)}</td>
+      <td>${esc(s.vendedor.nombre)}<br><span class="nota">${esc(s.vendedor.nif)} · ${esc(s.vendedor.email)}</span></td>
+      <td>${esc(s.concepto)}</td>
+      <td>${Number(s.total).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })} <span class="badge warn">pendiente</span></td>
+    </tr>`).join('');
+
+  $('facturasVacio').hidden = facturas.length > 0;
+  $('facturasTabla').hidden = facturas.length === 0;
+  $('facturasBody').innerHTML = facturas.map((f) => `
     <tr>
       <td><strong>${esc(f.numero)}</strong></td>
       <td>${esc(f.fecha)}</td>

@@ -66,6 +66,28 @@ CREATE TABLE IF NOT EXISTS compradores (
   activo INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now'))
 );
+
+-- Solicitudes de factura a vendedores que aún no están registrados:
+-- se invita al vendedor por email y, cuando se registra, se emiten.
+CREATE TABLE IF NOT EXISTS solicitudes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  comprador_id INTEGER NOT NULL REFERENCES compradores(id),
+  vendedor_nif TEXT NOT NULL,
+  vendedor_nombre TEXT NOT NULL,
+  vendedor_email TEXT NOT NULL,
+  vendedor_direccion TEXT NOT NULL DEFAULT '',
+  total REAL NOT NULL,
+  tipo_iva REAL NOT NULL,
+  concepto TEXT NOT NULL,
+  fecha_ticket TEXT,
+  ticket_ref TEXT NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'PENDIENTE',  -- PENDIENTE | FACTURADA
+  factura_id INTEGER REFERENCES facturas(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_solicitudes_dedupe
+ON solicitudes (comprador_id, vendedor_nif, ticket_ref);
 `);
 
 // Migración: columnas de continuidad de serie en BDs anteriores
@@ -73,12 +95,6 @@ const cols = db.prepare("PRAGMA table_info(comercios)").all().map((c) => c.name)
 if (!cols.includes('secuencia_previa')) {
   db.exec('ALTER TABLE comercios ADD COLUMN secuencia_previa INTEGER NOT NULL DEFAULT 0');
   db.exec('ALTER TABLE comercios ADD COLUMN anio_previo INTEGER');
-}
-
-// Migración: vendedores creados automáticamente desde una foto de ticket
-// (no dados de alta por el admin; sin acceso al panel hasta que reclamen).
-if (!cols.includes('auto_creado')) {
-  db.exec('ALTER TABLE comercios ADD COLUMN auto_creado INTEGER NOT NULL DEFAULT 0');
 }
 
 // Migración: facturas pedidas por un comprador registrado
