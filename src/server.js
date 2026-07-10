@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const { validarNIF, normalizarNIF } = require('./validators');
 const { renderFacturaHtml } = require('./invoice');
 const { mountLegacyFeatures } = require('./legacy-features');
+const { mountComprador } = require('./comprador');
 
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 8380;
@@ -292,6 +293,7 @@ function escapeHtml(v) {
 }
 
 mountLegacyFeatures(app, { db, emitirFactura, mailer, BASE_URL, JWT_SECRET, apiLimiter, formLimiter });
+mountComprador(app, { db, emitirFactura, mailer, BASE_URL, JWT_SECRET, apiLimiter, formLimiter, isProduction });
 
 app.use((err, req, res, next) => {
   console.error(err);

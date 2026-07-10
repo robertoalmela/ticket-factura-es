@@ -1,6 +1,6 @@
 # TicketFactura
 
-**Factura tu ticket con un QR.** El comercio imprime un QR en el ticket; el cliente escanea, pone su NIF una vez, y la factura (numeración legal consecutiva por comercio y año) le llega al email. Sin apps.
+**Hazle una foto al ticket y recibe tu factura.** El comprador (autónomo/empresa) se registra una vez con sus datos fiscales; después, cada factura es una foto: la app detecta los datos del vendedor (OCR), emite la factura con numeración correcta y la envía por email a comprador y vendedor.
 
 Producto separado de PrintQueue Pro — la copistería es el canal, no el dueño (ver `_INFORME/INFORME_foroapeme.md`... y la estrategia en el chat del 2026-07-04).
 
@@ -13,7 +13,14 @@ npm start        # http://localhost:8380 (landing en /)
 
 ## Flujos (verificados e2e)
 
-### QR / TPV — MVP principal
+### Comprador — flujo principal (`/app`)
+1. Registro único: email+contraseña y datos fiscales (NIF, nombre, dirección). Sesión por cookie (JWT, 180 días).
+2. Foto al ticket → `POST /api/invoices/ocr` detecta NIF/nombre/dirección/email del vendedor, fecha, total e IVA. Todo revisable a mano.
+3. `POST /api/comprador/factura`: si el vendedor no existe se da de alta automático con serie propia (`TF-<NIF>`); si existe (por NIF) se usa su serie real. Numeración `SERIE-AÑO-NNNN` sin huecos, idempotente por ticket+comprador.
+4. Email con la factura al comprador y copia al vendedor (si hay email). Las facturas de vendedor auto-creado indican "expedida por el destinatario" (art. 5 RD 1619/2012).
+5. `GET /api/comprador/facturas`: historial del comprador con enlaces firmados.
+
+### QR / TPV — para comercios adheridos
 1. TPV/PrintQueue: `POST /api/tickets` con `x-api-key` y `ticket_ref` único → `{url}` (y `GET /api/qr?url=...` da el PNG para el ticket)
 2. Cliente: abre `/f/<token>` → NIF+nombre+email (se recuerdan en su móvil) → `POST`
 3. Emisión: numeración `SERIE-AÑO-NNNN` sin huecos (transacción+UNIQUE), email al cliente con copia al comercio, idempotente por ticket+NIF
@@ -65,6 +72,8 @@ El VPS Contabo de Roberto ejecuta la app en `/srv/apps/ticketfactura` detrás de
 
 ## Pendiente (v2)
 - PDF adjunto (el HTML ya es imprimible)
-- Login/autoservicio completo del comercio (ahora `/panel` usa API key)
+- Login/autoservicio completo del comercio (ahora `/panel` usa API key); los vendedores auto-creados desde foto podrían "reclamar" su cuenta
+- OCR local (tesseract) como alternativa a OCR.space (`OCR_API_KEY`)
+- Recuperación de contraseña del comprador (requiere SMTP real)
 - VeriFactu cuando aplique (la numeración ya es compatible)
 - Integración como módulo de PrintQueue Pro

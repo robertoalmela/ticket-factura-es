@@ -55,6 +55,17 @@ CREATE TABLE IF NOT EXISTS facturas (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_facturas_ticket_nif
 ON facturas (comercio_id, ticket_ref, cliente_nif)
 WHERE ticket_ref IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS compradores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,    -- scrypt "salt:hash" en hex
+  nif TEXT NOT NULL,
+  nombre TEXT NOT NULL,
+  direccion TEXT NOT NULL DEFAULT '',
+  activo INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now'))
+);
 `);
 
 // Migración: columnas de continuidad de serie en BDs anteriores
@@ -62,6 +73,18 @@ const cols = db.prepare("PRAGMA table_info(comercios)").all().map((c) => c.name)
 if (!cols.includes('secuencia_previa')) {
   db.exec('ALTER TABLE comercios ADD COLUMN secuencia_previa INTEGER NOT NULL DEFAULT 0');
   db.exec('ALTER TABLE comercios ADD COLUMN anio_previo INTEGER');
+}
+
+// Migración: vendedores creados automáticamente desde una foto de ticket
+// (no dados de alta por el admin; sin acceso al panel hasta que reclamen).
+if (!cols.includes('auto_creado')) {
+  db.exec('ALTER TABLE comercios ADD COLUMN auto_creado INTEGER NOT NULL DEFAULT 0');
+}
+
+// Migración: facturas pedidas por un comprador registrado
+const colsFacturas = db.prepare("PRAGMA table_info(facturas)").all().map((c) => c.name);
+if (!colsFacturas.includes('comprador_id')) {
+  db.exec('ALTER TABLE facturas ADD COLUMN comprador_id INTEGER REFERENCES compradores(id)');
 }
 
 
@@ -87,13 +110,13 @@ const emitirFactura = db.transaction((datos) => {
     INSERT INTO facturas (
       comercio_id, numero, anio, secuencia, fecha_emision, concepto,
       base_imponible, tipo_iva, cuota_iva, total,
-      cliente_nif, cliente_nombre, cliente_direccion, cliente_email, ticket_ref
+      cliente_nif, cliente_nombre, cliente_direccion, cliente_email, ticket_ref, comprador_id
     ) VALUES (
       @comercio_id, @numero, @anio, @secuencia, @fecha_emision, @concepto,
       @base_imponible, @tipo_iva, @cuota_iva, @total,
-      @cliente_nif, @cliente_nombre, @cliente_direccion, @cliente_email, @ticket_ref
+      @cliente_nif, @cliente_nombre, @cliente_direccion, @cliente_email, @ticket_ref, @comprador_id
     )
-  `).run({ ...datos, numero, anio, secuencia });
+  `).run({ comprador_id: null, ...datos, numero, anio, secuencia });
 
   return db.prepare('SELECT * FROM facturas WHERE id = ?').get(info.lastInsertRowid);
 });

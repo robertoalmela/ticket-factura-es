@@ -161,6 +161,65 @@ GET /api/invoices/approved?api_key=<api-key>
 
 `/panel` consume estos endpoints desde navegador.
 
+## API del comprador (flujo principal `/app`)
+
+Sesión por cookie httpOnly `tf_comprador` (JWT, 180 días). Todas las rutas devuelven `401` sin sesión.
+
+### Registro y sesión
+
+```http
+POST /api/comprador/registro   {"email","password","nif","nombre","direccion"}
+POST /api/comprador/login      {"email","password"}
+POST /api/comprador/logout
+GET  /api/comprador/me
+PUT  /api/comprador/perfil     {"nif","nombre","direccion"}
+```
+
+`registro` y `login` fijan la cookie de sesión. La contraseña se guarda con scrypt.
+
+### Leer un ticket fotografiado
+
+```http
+POST /api/invoices/ocr    (multipart, campo "image")
+```
+
+Devuelve `companyName`, `nif`, `address`, `email`, `date`, `amount` y `taxRate` detectados (o `enabled:false` si no hay `OCR_API_KEY`; el flujo sigue en manual).
+
+### Emitir factura desde un ticket
+
+```http
+POST /api/comprador/factura
+content-type: application/json
+```
+
+Body:
+
+```json
+{
+  "vendedor": {"nif": "B12345674", "nombre": "Gasolinera El Cruce", "direccion": "opcional", "email": "opcional"},
+  "total": "45,60",
+  "tipo_iva": 21,
+  "fecha": "2026-07-09",
+  "ticket_ref": "T-8841",
+  "concepto": "Combustible"
+}
+```
+
+- Si el `vendedor.nif` coincide con un comercio registrado, la factura usa su serie real.
+- Si no, se da de alta automáticamente con serie `TF-<NIF>` y numeración propia.
+- Idempotente por `ticket_ref` + comprador: repetir la llamada reenvía la misma factura (`reenviada: true`).
+- El email va al comprador con copia (`cc`) al vendedor si hay email.
+
+Respuesta: `{ok, numero, reenviada, vendedor:{nombre,nif,nuevo}, email_vendedor, factura_url, message}`.
+
+### Historial del comprador
+
+```http
+GET /api/comprador/facturas
+```
+
+Devuelve hasta 100 facturas con `numero`, `fecha`, `concepto`, `total`, `vendedor` y `url` firmada.
+
 ## Healthcheck
 
 ```http

@@ -170,14 +170,27 @@ async function createInvoiceFromLegacyRequest({ db, emitirFactura, mailer, BASE_
 function parseTicketText(rawText) {
   const text = String(rawText || '').replace(/\r/g, '\n');
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  const nif = (text.match(/\b[ABCDEFGHJKLMNPQRSUVW]\d{7}[0-9A-J]\b/i) || text.match(/\b\d{8}[A-Z]\b/i) || [null])[0];
+  const nif = (text.match(/\b[ABCDEFGHJKLMNPQRSUVW][\s.-]?\d{7}[0-9A-J]\b/i) || text.match(/\b\d{8}[\s.-]?[A-Z]\b/i) || [null])[0];
   const date = (text.match(/\b(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})\b/) || [null])[0];
-  const totalLine = [...lines].reverse().find((line) => /total|importe|eur|€|visa|efectivo/i.test(line));
+  const totalLine = [...lines].reverse().find((line) => /total|importe|eur|€|visa|efectivo|tarjeta/i.test(line));
   const amountSource = totalLine || text;
   const numbers = amountSource.match(/\d+[,.]\d{2}/g) || [];
   const amount = numbers.length ? Number(numbers[numbers.length - 1].replace(',', '.')) : null;
-  const companyName = lines.find((line) => /[A-ZÁÉÍÓÚÑ]{3}/.test(line) && !/ticket|factura|total|iva|fecha/i.test(line)) || null;
-  return { companyName, nif, date, amount };
+  const companyName = lines.find((line) => /[A-ZÁÉÍÓÚÑ]{3}/.test(line) && !/ticket|factura|total|iva|fecha|gracias/i.test(line)) || null;
+  // Datos extra útiles para el flujo comprador: IVA y email del vendedor.
+  const ivaMatch = text.match(/\bIVA\s*:?\s*(\d{1,2})(?:[.,]\d+)?\s*%/i);
+  const taxRate = ivaMatch ? Number(ivaMatch[1]) : null;
+  const email = (text.match(/\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/i) || [null])[0];
+  const address = lines.find((line) => /\b(c\/|calle|avda|avenida|plaza|pza|ctra|carretera|camino|paseo)\b/i.test(line)) || null;
+  return {
+    companyName,
+    nif: nif ? nif.replace(/[\s.-]/g, '').toUpperCase() : null,
+    date,
+    amount,
+    taxRate,
+    email: email ? email.toLowerCase() : null,
+    address,
+  };
 }
 
 function getCommerceFromRequest(db, req) {

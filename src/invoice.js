@@ -46,7 +46,7 @@ function renderFacturaHtml(f, comercio) {
   <div><span>IVA (${f.tipo_iva}%)</span><span>${eur(f.cuota_iva)}</span></div>
   <div class="total"><span>Total</span><span>${eur(f.total)}</span></div>
 </div>
-<footer>Factura emitida a través de TicketFactura en nombre de ${comercio.nombre}. Conserva este documento a efectos fiscales.</footer>
+<footer>Factura emitida a través de TicketFactura en nombre de ${comercio.nombre}. Conserva este documento a efectos fiscales.${comercio.auto_creado ? '<br>Factura expedida por el destinatario a partir del ticket original (art. 5 del Reglamento de facturación, RD 1619/2012).' : ''}</footer>
 </body></html>`;
 }
 

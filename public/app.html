@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi TicketFactura — foto al ticket, factura en tu email</title>
+  <meta name="description" content="Hazle una foto a tu ticket y recibe la factura por email, con copia al vendedor y numeración correcta.">
+  <link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+  <nav class="topnav">
+    <div class="nav-inner">
+      <a class="logo" href="/">TicketFactura</a>
+      <div class="nav-links">
+        <a href="/app"><strong>Mi cuenta</strong></a>
+        <a href="/demo">Demo QR</a>
+        <a href="/panel">Panel comercio</a>
+        <a id="logoutLink" href="#" hidden>Salir</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+
+    <!-- ── Registro / login ─────────────────────────────────────── -->
+    <section id="authView" class="card" hidden>
+      <h1>Factura tus tickets</h1>
+      <p class="nota">Regístrate una vez con tus datos fiscales. Después, cada factura es solo una foto.</p>
+
+      <div class="steps" style="margin:16px 0 4px">
+        <button id="tabRegistro" type="button" style="flex:1">Crear cuenta</button>
+        <button id="tabLogin" type="button" class="secondary" style="flex:1">Ya tengo cuenta</button>
+      </div>
+      <div id="authMsg"></div>
+
+      <form id="formRegistro">
+        <label>Email <input name="email" type="email" required autocomplete="email"></label>
+        <label>Contraseña (mínimo 8 caracteres) <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+        <label>NIF / CIF <input name="nif" required placeholder="12345678A"></label>
+        <label>Nombre o razón social <input name="nombre" required></label>
+        <label>Dirección fiscal <input name="direccion" placeholder="Calle, número, CP, ciudad"></label>
+        <button type="submit" style="width:100%;margin-top:16px">Crear mi cuenta</button>
+        <p class="nota">Estos datos aparecerán como “Cliente” en tus facturas. Podrás cambiarlos cuando quieras.</p>
+      </form>
+
+      <form id="formLogin" hidden>
+        <label>Email <input name="email" type="email" required autocomplete="email"></label>
+        <label>Contraseña <input name="password" type="password" required autocomplete="current-password"></label>
+        <button type="submit" style="width:100%;margin-top:16px">Entrar</button>
+      </form>
+    </section>
+
+    <!-- ── App principal ────────────────────────────────────────── -->
+    <section id="mainView" class="card wide" hidden>
+      <h1>Hola, <span id="holaNombre"></span></h1>
+      <p class="nota">Tus facturas se emiten a nombre de <strong id="perfilResumen"></strong>. <a href="#" id="editarPerfilLink">Editar mis datos</a></p>
+
+      <form id="formPerfil" class="panel" hidden>
+        <h3>Mis datos fiscales</h3>
+        <div class="grid two">
+          <label>NIF / CIF <input name="nif" required></label>
+          <label>Nombre o razón social <input name="nombre" required></label>
+        </div>
+        <label>Dirección fiscal <input name="direccion"></label>
+        <div class="actions">
+          <button type="button" class="secondary" id="cancelarPerfil">Cancelar</button>
+          <button type="submit">Guardar</button>
+        </div>
+      </form>
+
+      <div class="steps" id="steps">
+        <div class="step active"><span class="num">1</span>Foto del ticket</div>
+        <div class="step-line"></div>
+        <div class="step"><span class="num">2</span>Revisar</div>
+        <div class="step-line"></div>
+        <div class="step"><span class="num">3</span>Factura</div>
+      </div>
+
+      <div id="msg"></div>
+
+      <section id="step1">
+        <h2>1. Hazle una foto al ticket</h2>
+        <label>Foto o imagen del ticket
+          <input id="ticketImage" type="file" accept="image/*" capture="environment">
+        </label>
+        <img id="preview" class="preview" alt="Previsualización del ticket" hidden>
+        <div class="actions">
+          <a href="#" class="nota" id="sinFotoLink">No tengo foto: rellenar a mano</a>
+          <button id="ocrBtn" type="button">Detectar datos</button>
+        </div>
+      </section>
+
+      <section id="step2" hidden>
+        <h2>2. Revisa los datos detectados</h2>
+        <div id="ocrInfo" class="alert ok" hidden></div>
+
+        <h3>Vendedor</h3>
+        <div class="grid two">
+          <label>NIF / CIF del vendedor <input id="vNif" required placeholder="B12345674"></label>
+          <label>Nombre del comercio <input id="vNombre" required></label>
+        </div>
+        <div class="grid two">
+          <label>Dirección (opcional) <input id="vDireccion"></label>
+          <label>Email del vendedor (opcional) <input id="vEmail" type="email" placeholder="Para enviarle su copia"></label>
+        </div>
+
+        <h3 style="margin-top:18px">Ticket</h3>
+        <div class="grid two">
+          <label>Total con IVA (€) <input id="tTotal" inputmode="decimal" required placeholder="12,80"></label>
+          <label>Tipo de IVA (%)
+            <select id="tIva">
+              <option value="21" selected>21% (general)</option>
+              <option value="10">10% (reducido)</option>
+              <option value="4">4% (superreducido)</option>
+              <option value="0">0% (exento)</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid two">
+          <label>Fecha del ticket <input id="tFecha" type="date"></label>
+          <label>Referencia del ticket (opcional) <input id="tRef" placeholder="Nº de ticket"></label>
+        </div>
+        <label>Concepto <input id="tConcepto" value="Compra según ticket" maxlength="140"></label>
+
+        <div class="actions">
+          <button class="secondary" type="button" id="volver1">Volver</button>
+          <button id="generarBtn" type="button">Generar y enviar factura</button>
+        </div>
+      </section>
+
+      <section id="step3" hidden>
+        <div class="alert ok">
+          <h2 style="margin:0 0 8px">✅ Factura <span id="okNumero"></span> enviada</h2>
+          <p id="okMsg" style="margin:0"></p>
+        </div>
+        <div class="actions">
+          <a class="btn secondary" id="verFacturaLink" target="_blank" rel="noopener">Ver factura</a>
+          <button type="button" id="otraBtn">Facturar otro ticket</button>
+        </div>
+      </section>
+
+      <h2 style="margin-top:34px">Mis facturas</h2>
+      <div id="facturasVacio" class="nota">Todavía no tienes facturas. Hazle una foto a tu primer ticket.</div>
+      <table id="facturasTabla" hidden>
+        <thead><tr><th>Número</th><th>Fecha</th><th>Vendedor</th><th>Total</th><th></th></tr></thead>
+        <tbody id="facturasBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+let perfil = null;
+
+function setMsg(el, text, type='error') { $(el).innerHTML = text ? `<div class="alert ${type}">${text}</div>` : ''; }
+
+/* ── Sesión ── */
+async function init() {
+  const r = await fetch('/api/comprador/me');
+  if (r.ok) {
+    perfil = (await r.json()).comprador;
+    mostrarApp();
+  } else {
+    $('authView').hidden = false;
+  }
+}
+
+function mostrarApp() {
+  $('authView').hidden = true;
+  $('mainView').hidden = false;
+  $('logoutLink').hidden = false;
+  $('holaNombre').textContent = perfil.nombre;
+  $('perfilResumen').textContent = `${perfil.nombre} (${perfil.nif})`;
+  cargarFacturas();
+}
+
+$('tabRegistro').addEventListener('click', () => cambiarTab(true));
+$('tabLogin').addEventListener('click', () => cambiarTab(false));
+function cambiarTab(registro) {
+  $('formRegistro').hidden = !registro;
+  $('formLogin').hidden = registro;
+  $('tabRegistro').className = registro ? '' : 'secondary';
+  $('tabLogin').className = registro ? 'secondary' : '';
+  setMsg('authMsg', '');
+}
+
+async function autenticar(url, form) {
+  const body = Object.fromEntries(new FormData(form));
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) return setMsg('authMsg', data.error || 'Error');
+  perfil = data.comprador;
+  mostrarApp();
+}
+$('formRegistro').addEventListener('submit', (e) => { e.preventDefault(); autenticar('/api/comprador/registro', e.target); });
+$('formLogin').addEventListener('submit', (e) => { e.preventDefault(); autenticar('/api/comprador/login', e.target); });
+$('logoutLink').addEventListener('click', async (e) => {
+  e.preventDefault();
+  await fetch('/api/comprador/logout', { method: 'POST' });
+  location.reload();
+});
+
+/* ── Perfil ── */
+$('editarPerfilLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  const f = $('formPerfil');
+  f.hidden = false;
+  f.nif.value = perfil.nif; f.nombre.value = perfil.nombre; f.direccion.value = perfil.direccion || '';
+});
+$('cancelarPerfil').addEventListener('click', () => { $('formPerfil').hidden = true; });
+$('formPerfil').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target));
+  const r = await fetch('/api/comprador/perfil', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) return setMsg('msg', data.error || 'Error');
+  perfil = data.comprador;
+  $('formPerfil').hidden = true;
+  $('perfilResumen').textContent = `${perfil.nombre} (${perfil.nif})`;
+  setMsg('msg', 'Datos guardados.', 'ok');
+});
+
+/* ── Pasos ── */
+function setStep(n) {
+  for (let i = 1; i <= 3; i++) $(`step${i}`).hidden = i !== n;
+  document.querySelectorAll('#steps .step').forEach((el, idx) => el.classList.toggle('active', idx + 1 <= n));
+  setMsg('msg', '');
+}
+
+$('ticketImage').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $('preview').src = URL.createObjectURL(file);
+  $('preview').hidden = false;
+});
+
+$('sinFotoLink').addEventListener('click', (e) => { e.preventDefault(); setStep(2); });
+$('volver1').addEventListener('click', () => setStep(1));
+
+$('ocrBtn').addEventListener('click', async () => {
+  const file = $('ticketImage').files[0];
+  if (!file) return setMsg('msg', 'Haz una foto o selecciona una imagen del ticket.');
+  $('ocrBtn').disabled = true;
+  $('ocrBtn').textContent = 'Leyendo el ticket...';
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const r = await fetch('/api/invoices/ocr', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (data.nif) $('vNif').value = data.nif;
+    if (data.companyName) $('vNombre').value = data.companyName;
+    if (data.address) $('vDireccion').value = data.address;
+    if (data.email) $('vEmail').value = data.email;
+    if (data.amount) $('tTotal').value = Number(data.amount).toFixed(2);
+    if (data.date) $('tFecha').value = normalDate(data.date);
+    if (data.taxRate != null && [0,4,10,21].includes(data.taxRate)) $('tIva').value = String(data.taxRate);
+    $('ocrInfo').hidden = false;
+    $('ocrInfo').textContent = data.enabled === false
+      ? data.message
+      : 'Datos detectados en el ticket. Revísalos antes de generar la factura.';
+    setStep(2);
+  } catch {
+    setMsg('msg', 'No se pudo leer el ticket. Rellena los datos a mano.');
+    setStep(2);
+  } finally {
+    $('ocrBtn').disabled = false;
+    $('ocrBtn').textContent = 'Detectar datos';
+  }
+});
+
+function normalDate(v) {
+  const m = String(v).match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/);
+  if (!m) return '';
+  const y = m[3].length === 2 ? `20${m[3]}` : m[3];
+  return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+
+/* ── Generar factura ── */
+$('generarBtn').addEventListener('click', async () => {
+  const body = {
+    vendedor: { nif: $('vNif').value, nombre: $('vNombre').value, direccion: $('vDireccion').value, email: $('vEmail').value },
+    total: $('tTotal').value,
+    tipo_iva: Number($('tIva').value),
+    fecha: $('tFecha').value,
+    ticket_ref: $('tRef').value,
+    concepto: $('tConcepto').value,
+  };
+  $('generarBtn').disabled = true;
+  $('generarBtn').textContent = 'Generando...';
+  try {
+    const r = await fetch('/api/comprador/factura', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await r.json();
+    if (!r.ok) return setMsg('msg', data.error || 'Error al generar la factura');
+    $('okNumero').textContent = data.numero + (data.reenviada ? ' (reenviada)' : '');
+    $('okMsg').textContent = data.message;
+    $('verFacturaLink').href = data.factura_url;
+    setStep(3);
+    cargarFacturas();
+  } finally {
+    $('generarBtn').disabled = false;
+    $('generarBtn').textContent = 'Generar y enviar factura';
+  }
+});
+
+$('otraBtn').addEventListener('click', () => {
+  for (const id of ['vNif','vNombre','vDireccion','vEmail','tTotal','tFecha','tRef']) $(id).value = '';
+  $('tConcepto').value = 'Compra según ticket';
+  $('tIva').value = '21';
+  $('ticketImage').value = '';
+  $('preview').hidden = true;
+  $('ocrInfo').hidden = true;
+  setStep(1);
+});
+
+/* ── Mis facturas ── */
+async function cargarFacturas() {
+  const r = await fetch('/api/comprador/facturas');
+  if (!r.ok) return;
+  const rows = await r.json();
+  $('facturasVacio').hidden = rows.length > 0;
+  $('facturasTabla').hidden = rows.length === 0;
+  $('facturasBody').innerHTML = rows.map((f) => `
+    <tr>
+      <td><strong>${esc(f.numero)}</strong></td>
+      <td>${esc(f.fecha)}</td>
+      <td>${esc(f.vendedor.nombre)}<br><span class="nota">${esc(f.vendedor.nif)}</span></td>
+      <td>${Number(f.total).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
+      <td><a href="${esc(f.url)}" target="_blank" rel="noopener">Ver</a></td>
+    </tr>`).join('');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TicketFactura — factura tu ticket con un QR</title>
-  <meta name="description" content="Tus clientes piden factura escaneando el QR del ticket. Sin apps, sin colas, sin trabajo para ti. Para copisterías, ferreterías y cualquier comercio.">
+  <title>TicketFactura — hazle una foto al ticket y recibe tu factura</title>
+  <meta name="description" content="Para autónomos y empresas: haz una foto al ticket de compra y recibe la factura por email, con copia al vendedor y numeración correcta. Sin colas ni esperas.">
   <style>
     * { box-sizing: border-box; margin: 0; }
     body { font-family: system-ui, sans-serif; color: #172033; line-height: 1.6; background: #fbfcfd; }
@@ -16,10 +16,7 @@
     .proof { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 24px; color: #dff7fb; font-size: 14px; }
     .ticket { background: #fff; color: #172033; border-radius: 8px; padding: 24px; box-shadow: 0 18px 50px rgba(0,0,0,.18); }
     .ticket .top { display: flex; justify-content: space-between; gap: 18px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 14px; margin-bottom: 16px; font-size: 13px; color: #475569; }
-    .qr { width: 138px; height: 138px; margin: 18px auto 10px; background:
-      linear-gradient(90deg, #111 10px, transparent 10px) 0 0/20px 20px,
-      linear-gradient(#111 10px, transparent 10px) 0 0/20px 20px,
-      #fff; border: 10px solid #fff; outline: 1px solid #e2e8f0; }
+    .foto { width: 138px; height: 138px; margin: 18px auto 10px; border-radius: 12px; background: #eaf7f7; display: grid; place-items: center; font-size: 64px; }
     .ticket strong { display: block; font-size: 22px; text-align: center; }
     .ticket p { margin: 8px 0 0; color: #475569; font-size: 14px; text-align: center; }
     section { max-width: 960px; margin: 0 auto; padding: 54px 20px; }
@@ -32,8 +29,8 @@
     .franja > * { max-width: 960px; margin-left: auto; margin-right: auto; }
     .franja ul { max-width: 640px; padding-left: 22px; }
     .franja li { margin: 10px 0; }
-    .precio { text-align: center; }
-    .precio .tarifa { font-size: 44px; font-weight: 800; color: #0b5563; }
+    .comercios { text-align: center; }
+    .comercios .tarifa { font-size: 44px; font-weight: 800; color: #0b5563; }
     footer { text-align: center; padding: 26px; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
     @media (max-width: 760px) {
       .hero-inner { grid-template-columns: 1fr; }
@@ -45,24 +42,23 @@
   <div class="hero">
     <div class="hero-inner">
       <div>
-        <h1>TicketFactura</h1>
-        <p>Tus clientes piden factura escaneando el QR del ticket. Sin apps, sin colas y sin que el personal tenga que parar la venta.</p>
+        <h1>Hazle una foto al ticket.<br>Recibe tu factura.</h1>
+        <p>Para autónomos y empresas: pedir factura de un ticket es un engorro. Con TicketFactura haces una foto, la app detecta los datos del vendedor, pone los tuyos y os envía la factura por email a los dos con la numeración correcta.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <a class="cta" href="mailto:robertoalmela300@gmail.com?subject=Quiero TicketFactura en mi comercio">Quiero probarlo en mi comercio</a>
+          <a class="cta" href="/app">Facturar mi primer ticket</a>
           <a class="cta" style="background:#fff;color:#0b5563" href="/demo">Ver demo QR</a>
-          <a class="cta" style="background:#dff7fb;color:#0b5563" href="/solicitar">Subir ticket</a>
         </div>
         <div class="proof">
-          <span>Numeración por comercio y año</span>
-          <span>Copia automática al comercio</span>
-          <span>Preparado para TPV o PrintQueue</span>
+          <span>Tus datos fiscales, una sola vez</span>
+          <span>Detección automática del vendedor</span>
+          <span>Copia por email para las dos partes</span>
         </div>
       </div>
-      <div class="ticket" aria-label="Ejemplo de ticket con QR">
+      <div class="ticket" aria-label="Ejemplo de ticket fotografiado">
         <div class="top"><span>Ticket #A-1042</span><span>12,80 €</span></div>
         <strong>¿Necesitas factura?</strong>
-        <div class="qr"></div>
-        <p>Escanea, introduce tus datos fiscales y recibe la factura por email.</p>
+        <div class="foto">📸</div>
+        <p>Foto al ticket y la factura llega a tu email en segundos. También al vendedor.</p>
       </div>
     </div>
   </div>
@@ -70,25 +66,26 @@
   <section>
     <h2>Cómo funciona</h2>
     <div class="pasos">
-      <div class="paso"><span class="n">1</span><strong>El ticket sale con un QR</strong>Tu caja o impresora añade un QR único a cada ticket. Sin cambiar de programa.</div>
-      <div class="paso"><span class="n">2</span><strong>El cliente escanea</strong>Pone su NIF y su email una sola vez; el móvil se los recuerda para la próxima.</div>
-      <div class="paso"><span class="n">3</span><strong>Factura en su email</strong>Numeración consecutiva con tu serie, copia para ti y el cliente atendido sin cola.</div>
+      <div class="paso"><span class="n">1</span><strong>Regístrate una vez</strong>NIF, nombre y email. La app recuerda tus datos de comprador para siempre: no vuelves a teclearlos.</div>
+      <div class="paso"><span class="n">2</span><strong>Foto al ticket</strong>La app lee el ticket y detecta el NIF y el nombre del vendedor, la fecha y el importe. Tú solo revisas.</div>
+      <div class="paso"><span class="n">3</span><strong>Factura para los dos</strong>Se genera la factura con numeración correcta y os llega por email a ti y al vendedor. Lista para tu gestor.</div>
     </div>
   </section>
 
   <section class="franja">
     <h2>Para quién es</h2>
     <ul>
-      <li><strong>Copisterías y papelerías</strong>: autónomos pidiendo factura de 3 € todo el día.</li>
-      <li><strong>Ferreterías y suministros</strong>: profesionales que facturan cada compra.</li>
-      <li><strong>Gasolineras, parkings y hostelería de polígono</strong>: donde la cola por una factura cuesta clientes.</li>
+      <li><strong>Autónomos</strong>: cada ticket de gasolina, parking, ferretería o material es deducible si tienes factura. Ahora es una foto.</li>
+      <li><strong>Pymes con empleados que compran</strong>: cada empleado factura sus tickets al momento, sin perseguir a nadie a fin de mes.</li>
+      <li><strong>Gestores y asesorías</strong>: tus clientes te entregan facturas de verdad, no una caja de zapatos con tickets.</li>
     </ul>
   </section>
 
-  <section class="precio">
-    <h2>Precio de lanzamiento</h2>
+  <section class="comercios">
+    <h2>¿Tienes un comercio?</h2>
+    <p style="max-width:640px;margin:0 auto 18px">Adelántate: imprime un QR en tus tickets y tus clientes se hacen la factura solos, sin parar la venta ni hacer cola. <a href="/demo">Prueba la demo del QR</a> o gestiona tus facturas desde el <a href="/panel">panel de comercio</a>.</p>
     <div class="tarifa">19 €/mes</div>
-    <p>por comercio · facturas ilimitadas · sin permanencia<br>Instalación y prueba de 30 días incluidas.</p>
+    <p>por comercio · facturas ilimitadas · sin permanencia<br>Instalación y prueba de 30 días incluidas.<br><a class="cta" style="margin-top:16px" href="mailto:robertoalmela300@gmail.com?subject=Quiero TicketFactura en mi comercio">Quiero el QR en mi comercio</a></p>
   </section>
 
   <footer>TicketFactura · un producto de Roberto Almela (Elche) · robertoalmela300@gmail.com</footer>

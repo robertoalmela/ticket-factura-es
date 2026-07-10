@@ -9,5 +9,5 @@
   "owner": "Roberto",
   "status": "preview",
   "last_verified": "2026-07-10",
-  "notes": "MVP QR + flujo heredado /solicitar y panel comercio demo; pendiente DNS y SMTP para producción."
+  "notes": "Pivote comprador: registro autónomo + foto ticket → factura en /app (OCR, alta automática vendedor). QR y panel comercio se mantienen. Pendiente redesplegar, OCR_API_KEY, DNS y SMTP."
 }
