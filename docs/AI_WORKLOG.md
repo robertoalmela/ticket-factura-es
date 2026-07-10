@@ -5,6 +5,14 @@ Bitácora de trabajo de agentes IA. Añadir entradas arriba, bajo "Últimas entr
 ## Últimas entradas
 
 <!-- AI_WORKLOG:START -->
+### 2026-07-10T21:53:22+00:00 — IA
+
+- Resumen: Revisado TicketFactura en local/VPS/GitHub; corregido trust proxy detrás de Caddy, añadido favicon, restaurada metadata webs-deploy y redesplegado en Contabo
+- Verificación: Local smoke: health/landing/demo/solicitar/panel/API dashboard/tickets/invoices OK. VPS: docker health healthy, rutas 200/302, factura manual OK, logs sin ERR_ERL, Caddy valid, Playwright panel OK sin consola, webs-deploy 10/10 sin blockers.
+- Siguiente paso: no indicado
+- Cambios detectados:
+  - Sin cambios pendientes
+
 
 ### 2026-07-10 23:47 CEST — Hermes / gpt-5.5
 

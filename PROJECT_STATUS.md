@@ -52,3 +52,10 @@ curl -fsS -X POST http://127.0.0.1:8392/api/invoices/request \
 1. Configurar DNS del dominio `ticket-factura.es` hacia el VPS.
 2. Configurar SMTP real del dominio/correo.
 3. Cambiar `BASE_URL` a `https://ticket-factura.es` y activar bloque Caddy definitivo.
+
+## Última actualización IA
+
+- Fecha: `2026-07-10T21:53:22+00:00`
+- Resumen: Revisado TicketFactura en local/VPS/GitHub; corregido trust proxy detrás de Caddy, añadido favicon, restaurada metadata webs-deploy y redesplegado en Contabo
+- Verificación: Local smoke: health/landing/demo/solicitar/panel/API dashboard/tickets/invoices OK. VPS: docker health healthy, rutas 200/302, factura manual OK, logs sin ERR_ERL, Caddy valid, Playwright panel OK sin consola, webs-deploy 10/10 sin blockers.
+
