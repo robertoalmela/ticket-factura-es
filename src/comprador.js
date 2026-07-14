@@ -99,6 +99,13 @@ function mountComprador(app, { db, emitirFactura, mailer, BASE_URL, JWT_SECRET, 
     res.json({ comprador: publicComprador(comprador) });
   });
 
+  // Endpoint silencioso para inicializar la UI sin generar un 401 visible en consola
+  // cuando el visitante aún no ha iniciado sesión.
+  app.get('/api/comprador/session', apiLimiter, (req, res) => {
+    const comprador = compradorFromRequest(req);
+    res.json({ comprador: comprador ? publicComprador(comprador) : null });
+  });
+
   app.put('/api/comprador/perfil', apiLimiter, requireComprador(async (req, res, comprador) => {
     const { nif, nombre, direccion } = req.body || {};
     if (!validarNIF(nif)) return res.status(400).json({ error: 'NIF/CIF no válido' });

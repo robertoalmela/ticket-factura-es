@@ -166,13 +166,12 @@ function setMsg(el, text, type='error') { $(el).innerHTML = text ? `<div class="
 
 /* ── Sesión ── */
 async function init() {
-  const r = await fetch('/api/comprador/me');
-  if (r.ok) {
-    perfil = (await r.json()).comprador;
-    mostrarApp();
-  } else {
-    $('authView').hidden = false;
-  }
+  try {
+    const r = await fetch('/api/comprador/session');
+    if (r.ok) perfil = (await r.json()).comprador;
+  } catch {}
+  if (perfil) mostrarApp();
+  else $('authView').hidden = false;
 }
 
 function mostrarApp() {
