@@ -5,6 +5,12 @@ Bitácora de trabajo de agentes IA. Añadir entradas arriba, bajo "Últimas entr
 ## Últimas entradas
 
 <!-- AI_WORKLOG:START -->
+### 2026-07-14 — Hermes / gpt-5.5 · merge QR + OCR y rediseño
+
+- Resumen: fusionada la rama comprador/OCR sobre la rama desplegable sin retirar el flujo QR. Landing reescrita para comunicar los dos caminos (foto/OCR y QR comercio) y `public/estilo.css` convertido en sistema visual común para landing, `/app`, `/panel`, `/solicitar` y formulario QR.
+- Verificación local: `node --check` en `src/server.js`, `src/legacy-features.js`, `src/comprador.js`; smoke API en servidor temporal `:8394`: páginas principales 200, `/health` OK, QR completo OK, OCR/manual OK, comprador `/app` OK, panel/dashboard OK.
+- Siguiente paso: deploy manual en VPS, verificación pública, SMTP real y `OCR_API_KEY` si se quiere OCR real.
+
 ### 2026-07-10 — IA (Claude) · iteración 2: invitación a vendedores
 
 - Resumen: por decisión de Roberto, solo se factura si el vendedor está registrado. Vendedor sin registrar → solicitud `PENDIENTE` (nueva tabla `solicitudes`, dedupe por comprador+NIF+ticket_ref) + email de invitación con enlace `/vendedor/alta/<token>` (JWT 30d). El alta crea el comercio (serie `TF-<NIF>`, api_key) y emite automáticamente todas sus solicitudes pendientes con email a cada comprador y copia al vendedor. Eliminada el alta automática y la mención art. 5. UI: email del vendedor requerido si no está registrado, estado "⏳ Invitación enviada", sección "Pendientes del vendedor". Añadido `.github/workflows/deploy.yml` (deploy VPS por SSH con secrets).

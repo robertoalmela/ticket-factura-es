@@ -4,7 +4,7 @@
 
 ## Resumen
 
-- Estado: MVP desplegado en VPS + pivote comprador-céntrico implementado (pendiente redesplegar); pendiente producción real con dominio + SMTP.
+- Estado: MVP fusionado y verificado localmente: QR comercio + flujo comprador con foto/OCR conviven en la misma app. Pendiente verificación final post-deploy VPS.
 - Objetivo: el autónomo hace una foto al ticket y recibe la factura por email (con copia al vendedor y numeración correcta). El QR para comercios adheridos se mantiene como segundo flujo.
 - Usuario final: autónomos/empresas que necesitan facturar tickets; comercios como canal (QR).
 - Ruta local: `/home/roberto/Desktop/GitHub/01-incubating/ticketfactura`
@@ -42,10 +42,10 @@ curl -fsS -X POST http://127.0.0.1:8392/api/invoices/request \
 
 ## Último estado conocido
 
-- Fecha: 2026-07-10 (pivote comprador + invitación a vendedores)
-- Qué funciona (verificado local): registro/login comprador (`/app`); foto→OCR→revisión; vendedor registrado (por NIF) → factura inmediata con su serie y email a ambos; vendedor sin registrar → solicitud `PENDIENTE` + email de invitación con enlace de alta (`/vendedor/alta/<token>`) que al completarse emite todas sus pendientes automáticamente; historial con facturas y pendientes; y todos los flujos anteriores (QR `/f/`, `/solicitar`, `/panel`, API).
-- Qué cambia: solo facturan vendedores registrados (sin alta automática); tablas `compradores` y `solicitudes`; `facturas.comprador_id`; parser OCR ampliado (IVA, email, dirección); workflow GitHub Actions `deploy.yml` para desplegar al VPS (necesita secrets).
-- Qué falta para producción: redesplegar en VPS (o configurar secrets del workflow), DNS `ticket-factura.es` hacia `173.249.46.245` y SMTP real (crítico ahora: las invitaciones a vendedores van por email).
+- Fecha: 2026-07-14 (merge QR + OCR y rediseño)
+- Qué funciona (verificado local): landing rediseñada; registro/login comprador (`/app`); OCR opcional y modo manual; vendedor registrado por NIF → factura inmediata; vendedor no registrado → solicitud pendiente + invitación; QR `/api/tickets` + `/api/qr` + `/f/<token>`; flujo heredado `/solicitar`; panel `/panel` + `/api/dashboard`.
+- Qué cambia: la landing comunica claramente los dos flujos (QR comercio y foto/OCR comprador) y todo el UI comparte el mismo sistema visual desde `public/estilo.css`.
+- Qué falta para producción: verificación final post-deploy; SMTP real; `OCR_API_KEY` para OCR real (sin clave, el flujo sigue manual); DNS `www.ticket-factura.es` aún no resuelve.
 - Bloqueos: sin SMTP real los emails se simulan con `jsonTransport`; sin `OCR_API_KEY` la lectura de tickets funciona en modo manual.
 
 ## Próximos pasos
@@ -58,7 +58,7 @@ curl -fsS -X POST http://127.0.0.1:8392/api/invoices/request \
 
 ## Última actualización IA
 
-- Fecha: `2026-07-10` (segunda iteración)
-- Resumen: Pivote comprador-céntrico con invitación a vendedores: el comprador registrado fotografía el ticket; si el vendedor está registrado la factura es inmediata para ambos; si no, solicitud pendiente + email de invitación cuyo enlace de alta emite automáticamente las facturas pendientes. Sin alta automática de vendedores (decisión de Roberto). Añadido workflow de deploy por GitHub Actions.
-- Verificación: smoke local completo por API (registro, login, pendiente sin email → 400, invitación, dedupe/reenvío, alta vendedor → factura emitida + api_key funcional en dashboard, vendedor registrado → inmediata, token inválido, regresión QR+solicitar+dashboard) y Playwright sobre `/app` (error guiado de email, pendiente, factura inmediata, tablas) sin errores JS.
+- Fecha: `2026-07-14`
+- Resumen: Merge de la rama comprador/OCR sobre la rama desplegable, preservando QR. Rediseño de landing y sistema visual común para landing, app, panel, solicitar y formulario QR.
+- Verificación: smoke local API contra servidor temporal en `:8394`: `/`, `/app`, `/panel`, `/solicitar`, `/health`, QR completo, OCR/manual, comprador `/app` y panel/dashboard OK.
 
