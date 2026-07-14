@@ -5,6 +5,14 @@ Bitácora de trabajo de agentes IA. Añadir entradas arriba, bajo "Últimas entr
 ## Últimas entradas
 
 <!-- AI_WORKLOG:START -->
+### 2026-07-14T13:59:43+00:00 — IA
+
+- Resumen: Merge QR + OCR/comprador, rediseño UI y despliegue VPS ticket-factura.es
+- Verificación: node --check src/server.js src/comprador.js; smoke local :8394; smoke producción ticket-factura.es QR/OCR/app/panel OK; Playwright desktop/móvil sin consola; docker healthy
+- Siguiente paso: Configurar SMTP real, OCR_API_KEY y DNS www.ticket-factura.es
+- Cambios detectados:
+  - Sin cambios pendientes
+
 ### 2026-07-14 — Hermes / gpt-5.5 · merge QR + OCR y rediseño
 
 - Resumen: fusionada la rama comprador/OCR sobre la rama desplegable sin retirar el flujo QR. Landing reescrita para comunicar los dos caminos (foto/OCR y QR comercio) y `public/estilo.css` convertido en sistema visual común para landing, `/app`, `/panel`, `/solicitar` y formulario QR.

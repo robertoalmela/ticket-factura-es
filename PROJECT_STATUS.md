@@ -58,7 +58,7 @@ curl -fsS -X POST http://127.0.0.1:8392/api/invoices/request \
 
 ## Última actualización IA
 
-- Fecha: `2026-07-14`
-- Resumen: Merge de la rama comprador/OCR sobre la rama desplegable, preservando QR. Rediseño de landing y sistema visual común para landing, app, panel, solicitar y formulario QR.
-- Verificación: smoke local API contra servidor temporal en `:8394`: `/`, `/app`, `/panel`, `/solicitar`, `/health`, QR completo, OCR/manual, comprador `/app` y panel/dashboard OK.
+- Fecha: `2026-07-14T13:59:43+00:00`
+- Resumen: Merge QR + OCR/comprador, rediseño UI y despliegue VPS ticket-factura.es
+- Verificación: node --check src/server.js src/comprador.js; smoke local :8394; smoke producción ticket-factura.es QR/OCR/app/panel OK; Playwright desktop/móvil sin consola; docker healthy
 
